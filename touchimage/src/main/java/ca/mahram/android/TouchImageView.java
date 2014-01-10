@@ -120,7 +120,7 @@ public class TouchImageView extends ImageView {
 
         TypedArray ta = context.obtainStyledAttributes (attrs, R.styleable.TouchImageView);
 
-        final boolean allowScale = true;
+        final boolean allowScale;
 //        final boolean allowRotate;
 
         try {
@@ -132,7 +132,7 @@ public class TouchImageView extends ImageView {
 
 //            allowDoubleTap = ta.getBoolean (R.styleable.TouchImageView_allowDoubleTap, true);
 //            allowFling = ta.getBoolean (R.styleable.TouchImageView_allowFling, true);
-//            allowScale = ta.getBoolean (R.styleable.TouchImageView_allowScale, true);
+            allowScale = ta.getBoolean (R.styleable.TouchImageView_allowScale, true);
 //            allowRotate = ta.getBoolean (R.styleable.TouchImageView_allowRotate, true);
         } finally {
             ta.recycle ();
@@ -149,14 +149,11 @@ public class TouchImageView extends ImageView {
     private void sharedConstructing(Context context) {
         super.setClickable(true);
         this.context = context;
-        mScaleDetector = new ScaleGestureDetector(context, new ScaleListener());
         mGestureDetector = new GestureDetector(context, new GestureListener());
         matrix = new Matrix();
         prevMatrix = new Matrix();
         matrixValues = new float[9];
         normalizedScale = 1;
-        minScale = 1;
-        maxScale = 3;
         lowerBounceBackScale = minScaleBounceBackMultiplier * minScale;
         upperBounceBackScale = maxScaleBounceBackMultiplier * maxScale;
         maintainZoomAfterSetImage = true;
@@ -608,14 +605,13 @@ public class TouchImageView extends ImageView {
         
         @Override
         public boolean onDoubleTap(MotionEvent e) {
-        	boolean consumed = false;
-        	if (state == NONE) {
-	        	float targetZoom = (normalizedScale == minScale) ? maxScale : minScale;
-	        	DoubleTapZoom doubleTap = new DoubleTapZoom(targetZoom, e.getX(), e.getY(), false);
-	        	compatPostOnAnimation(doubleTap);
-	        	consumed = true;
-        	}
-        	return consumed;
+            if (NONE != state || null == mScaleDetector)
+                return false;
+
+            float targetZoom = (normalizedScale == minScale) ? maxScale : minScale;
+            DoubleTapZoom doubleTap = new DoubleTapZoom(targetZoom, e.getX(), e.getY(), false);
+            compatPostOnAnimation(doubleTap);
+            return true;
         }
     }
     
@@ -634,7 +630,9 @@ public class TouchImageView extends ImageView {
     	
     	@Override
         public boolean onTouch(View v, MotionEvent event) {
-            mScaleDetector.onTouchEvent(event);
+            if (null != mScaleDetector)
+                mScaleDetector.onTouchEvent(event);
+
             mGestureDetector.onTouchEvent(event);
             PointF curr = new PointF(event.getX(), event.getY());
             
