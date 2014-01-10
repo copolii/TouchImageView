@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>ca.mahram.android</groupId>
+    <artifactId>touchimageview</artifactId>
+    <version>1.0.0</version>
+    <packaging>aar</packaging>
+
+    <name>TouchImageView</name>
+    <description>Extends Android ImageView to include pinch zooming, panning, fling and double tap zoom. This is an expansion and refactoring of the work originally done by Mike Ortiz at (https://github.com/MikeOrtiz/TouchImageView).
+        This project supports XML attributes to allow for complete customization of the TouchImageView instance within the XML declaration.</description>
+    <url>https://github.com/copolii/TouchImageView</url>
+
+    <licenses>
+        <license>
+            <name>Custom License</name>
+            <url>https://raw2.github.com/copolii/TouchImageView/master/LICENSE</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/copolii/TouchImageView</url>
+    </scm>
+</project>
