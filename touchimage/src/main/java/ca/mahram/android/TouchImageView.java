@@ -111,6 +111,7 @@ public class TouchImageView extends ImageView {
     private FlingListener flingListener;
 
     private final boolean allowDrag;
+    private final boolean allowDoubleTap;
 
     public TouchImageView(final Context context) {
         super(context);
@@ -121,6 +122,7 @@ public class TouchImageView extends ImageView {
         flingBehaviour = FlingBehaviour.SCROLL;
         mScaleDetector = new ScaleGestureDetector(context, new ScaleListener());
         allowDrag = true;
+        allowDoubleTap = true;
         sharedConstructing(context);
     }
 
@@ -145,10 +147,11 @@ public class TouchImageView extends ImageView {
             maxScaleBounceBackMultiplier = ta.getFloat(R.styleable.TouchImageView_maxScaleBounceBackMultiplier, DEFAULT_MAXIMUM_BOUNCEBACK_MULTIPLIER);
 
             allowDrag = ta.getBoolean (R.styleable.TouchImageView_allowDrag, true);
+            allowDoubleTap = ta.getBoolean (R.styleable.TouchImageView_allowDoubleTap, true);
 
             fling = ta.getInt(R.styleable.TouchImageView_flingBehaviour, FlingBehaviour.SCROLL.ordinal());
 
-//            allowDoubleTap = ta.getBoolean (R.styleable.TouchImageView_allowDoubleTap, true);
+
 //            allowFling = ta.getBoolean (R.styleable.TouchImageView_allowFling, true);
             allowScale = ta.getBoolean(R.styleable.TouchImageView_allowScale, true);
 //            allowRotate = ta.getBoolean (R.styleable.TouchImageView_allowRotate, true);
@@ -187,6 +190,18 @@ public class TouchImageView extends ImageView {
             throw new IllegalStateException("Fling behaviour is not 'listener'");
 
         flingListener = listener;
+    }
+
+    public boolean allowsScaling () {
+        return null != mScaleDetector;
+    }
+
+    public boolean allowsDrag () {
+        return allowDrag;
+    }
+
+    public boolean allowsDoubleTap () {
+        return allowDoubleTap;
     }
 
     public FlingBehaviour getFlingBehaviour () {
@@ -825,7 +840,7 @@ public class TouchImageView extends ImageView {
 
         @Override
         public boolean onDoubleTap(MotionEvent e) {
-            if (NONE != state || null == mScaleDetector)
+            if (NONE != state || null == mScaleDetector || !allowDoubleTap)
                 return false;
 
             float targetZoom = (normalizedScale == minScale) ? maxScale : minScale;

@@ -15,6 +15,7 @@
         app:allowScale="true"
         app:flingBehaviour="listener"
         app:allowDrag="true"
+        app:allowDoubleTap="false"
 	    android:layout_width="match_parent"
 	    android:layout_height="match_parent" />
     
