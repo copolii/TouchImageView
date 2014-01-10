@@ -1,6 +1,7 @@
 /*
  * TouchImageView.java
- * By: Michael Ortiz
+ * Original work By: Michael Ortiz (https://github.com/MikeOrtiz/TouchImageView)
+ * Refactored & Expanded by: Mahram Z. Foadi
  * Updated By: Patrick Lackemacher
  * Updated By: Babay88
  * Updated By: @ipsilondev
@@ -8,15 +9,16 @@
  * Extends Android ImageView to include pinch zooming, panning, fling and double tap zoom.
  */
 
-package com.example.touch;
+package ca.mahram.android;
 
-import static com.example.touch.TouchImageView.State.ANIMATE_ZOOM;
-import static com.example.touch.TouchImageView.State.DRAG;
-import static com.example.touch.TouchImageView.State.FLING;
-import static com.example.touch.TouchImageView.State.NONE;
-import static com.example.touch.TouchImageView.State.ZOOM;
+import static ca.mahram.android.TouchImageView.State.ANIMATE_ZOOM;
+import static ca.mahram.android.TouchImageView.State.DRAG;
+import static ca.mahram.android.TouchImageView.State.FLING;
+import static ca.mahram.android.TouchImageView.State.NONE;
+import static ca.mahram.android.TouchImageView.State.ZOOM;
 import android.annotation.TargetApi;
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.graphics.PointF;
@@ -38,16 +40,16 @@ import android.widget.ImageView;
 import android.widget.Scroller;
 
 public class TouchImageView extends ImageView {
-	
-	private static final String DEBUG = "DEBUG";
-	
-	//
-	// SuperMin and SuperMax multipliers. Determine how much the image can be
-	// zoomed below or above the zoom boundaries, before animating back to the
-	// min/max zoom boundary.
-	//
-	private static final float SUPER_MIN_MULTIPLIER = .75f;
-	private static final float SUPER_MAX_MULTIPLIER = 1.25f;
+
+    private static final String LOGTAG = "TouchImageView";
+
+    //
+    // SuperMin and SuperMax multipliers. Determine how much the image can be
+    // zoomed below or above the zoom boundaries, before animating back to the
+    // min/max zoom boundary.
+    //
+    private final float minScaleBounceBackMultiplier;
+    private final float maxScaleBounceBackMultiplier;
 
     //
     // Scale of image ranges from minScale to maxScale, where minScale == 1
@@ -60,17 +62,18 @@ public class TouchImageView extends ImageView {
     // MTRANS_X and MTRANS_Y are the other values used. prevMatrix is the matrix
     // saved prior to the screen rotating.
     //
-	private Matrix matrix, prevMatrix;
+	private Matrix matrix;
+    private Matrix prevMatrix;
 
     public static enum State { NONE, DRAG, ZOOM, FLING, ANIMATE_ZOOM };
     private State state;
 
     private float minScale;
     private float maxScale;
-    private float superMinScale;
-    private float superMaxScale;
-    private float[] m;
-    
+    private float lowerBounceBackScale;
+    private float upperBounceBackScale;
+    private float[] matrixValues;
+
     private Context context;
     private Fling fling;
 
@@ -98,21 +101,51 @@ public class TouchImageView extends ImageView {
     private ScaleGestureDetector mScaleDetector;
     private GestureDetector mGestureDetector;
 
-    public TouchImageView(Context context) {
+    public TouchImageView(final Context context) {
         super(context);
+        minScaleBounceBackMultiplier = DEFAULT_MINIMUM_BOUNCEBACK_MULTIPLIER;
+        maxScaleBounceBackMultiplier = DEFAULT_MAXIMUM_BOUNCEBACK_MULTIPLIER;
+        minScale = DEFAULT_MIN_SCALE;
+        maxScale = DEFAULT_MAX_SCALE;
+        mScaleDetector = new ScaleGestureDetector (context, new ScaleListener ());
         sharedConstructing(context);
     }
 
-    public TouchImageView(Context context, AttributeSet attrs) {
-        super(context, attrs);
+    public TouchImageView(final Context context, final AttributeSet attrs) {
+        this (context, attrs, 0);
+    }
+    
+    public TouchImageView(final Context context, final AttributeSet attrs, final int defStyle) {
+    	super(context, attrs, defStyle);
+
+        TypedArray ta = context.obtainStyledAttributes (attrs, R.styleable.TouchImageView);
+
+        final boolean allowScale = true;
+//        final boolean allowRotate;
+
+        try {
+            minScale = ta.getFloat (R.styleable.TouchImageView_minScale, DEFAULT_MIN_SCALE);
+            maxScale = ta.getFloat (R.styleable.TouchImageView_maxScale, DEFAULT_MAX_SCALE);
+
+            minScaleBounceBackMultiplier = ta.getFloat(R.styleable.TouchImageView_minScaleBounceBackMultiplier, DEFAULT_MINIMUM_BOUNCEBACK_MULTIPLIER);
+            maxScaleBounceBackMultiplier = ta.getFloat(R.styleable.TouchImageView_maxScaleBounceBackMultiplier, DEFAULT_MAXIMUM_BOUNCEBACK_MULTIPLIER);
+
+//            allowDoubleTap = ta.getBoolean (R.styleable.TouchImageView_allowDoubleTap, true);
+//            allowFling = ta.getBoolean (R.styleable.TouchImageView_allowFling, true);
+//            allowScale = ta.getBoolean (R.styleable.TouchImageView_allowScale, true);
+//            allowRotate = ta.getBoolean (R.styleable.TouchImageView_allowRotate, true);
+        } finally {
+            ta.recycle ();
+        }
+
+        mScaleDetector = allowScale
+                ? new ScaleGestureDetector (context, new ScaleListener ())
+                : null;
+
+
         sharedConstructing(context);
     }
-    
-    public TouchImageView(Context context, AttributeSet attrs, int defStyle) {
-    	super(context, attrs, defStyle);
-    	sharedConstructing(context);
-    }
-    
+
     private void sharedConstructing(Context context) {
         super.setClickable(true);
         this.context = context;
@@ -120,12 +153,12 @@ public class TouchImageView extends ImageView {
         mGestureDetector = new GestureDetector(context, new GestureListener());
         matrix = new Matrix();
         prevMatrix = new Matrix();
-        m = new float[9];
+        matrixValues = new float[9];
         normalizedScale = 1;
         minScale = 1;
         maxScale = 3;
-        superMinScale = SUPER_MIN_MULTIPLIER * minScale;
-        superMaxScale = SUPER_MAX_MULTIPLIER * maxScale;
+        lowerBounceBackScale = minScaleBounceBackMultiplier * minScale;
+        upperBounceBackScale = maxScaleBounceBackMultiplier * maxScale;
         maintainZoomAfterSetImage = true;
         setImageMatrix(matrix);
         setScaleType(ScaleType.MATRIX);
@@ -177,8 +210,8 @@ public class TouchImageView extends ImageView {
      */
     private void savePreviousImageValues() {
     	if (matrix != null) {
-	    	matrix.getValues(m);
-	    	prevMatrix.setValues(m);
+	    	matrix.getValues(matrixValues);
+	    	prevMatrix.setValues(matrixValues);
 	    	prevMatchViewHeight = matchViewHeight;
 	        prevMatchViewWidth = matchViewWidth;
 	        prevViewHeight = viewHeight;
@@ -189,14 +222,14 @@ public class TouchImageView extends ImageView {
     @Override
     public Parcelable onSaveInstanceState() {
       Bundle bundle = new Bundle();
-      bundle.putParcelable("instanceState", super.onSaveInstanceState());
-      bundle.putFloat("saveScale", normalizedScale);
-      bundle.putFloat("matchViewHeight", matchViewHeight);
-      bundle.putFloat("matchViewWidth", matchViewWidth);
-      bundle.putInt("viewWidth", viewWidth);
-      bundle.putInt("viewHeight", viewHeight);
-      matrix.getValues(m);
-      bundle.putFloatArray("matrix", m);
+      bundle.putParcelable(KEY_INSTANCE_STATE, super.onSaveInstanceState());
+      bundle.putFloat(KEY_NORMALIZED_SCALE, normalizedScale);
+      bundle.putFloat(KEY_MATCH_VIEW_HEIGHT, matchViewHeight);
+      bundle.putFloat(KEY_MATCH_VIEW_WIDTH, matchViewWidth);
+      bundle.putInt(KEY_VIEW_WIDTH, viewWidth);
+      bundle.putInt(KEY_VIEW_HEIGHT, viewHeight);
+      matrix.getValues(matrixValues);
+      bundle.putFloatArray(KEY_MATRIX_VALUES, matrixValues);
       return bundle;
     }
 
@@ -204,14 +237,14 @@ public class TouchImageView extends ImageView {
     public void onRestoreInstanceState(Parcelable state) {
       	if (state instanceof Bundle) {
 	        Bundle bundle = (Bundle) state;
-	        normalizedScale = bundle.getFloat("saveScale");
-	        m = bundle.getFloatArray("matrix");
-	        prevMatrix.setValues(m);
-	        prevMatchViewHeight = bundle.getFloat("matchViewHeight");
-	        prevMatchViewWidth = bundle.getFloat("matchViewWidth");
-	        prevViewHeight = bundle.getInt("viewHeight");
-	        prevViewWidth = bundle.getInt("viewWidth");
-	        super.onRestoreInstanceState(bundle.getParcelable("instanceState"));
+	        normalizedScale = bundle.getFloat(KEY_NORMALIZED_SCALE);
+	        matrixValues = bundle.getFloatArray(KEY_MATRIX_VALUES);
+	        prevMatrix.setValues(matrixValues);
+	        prevMatchViewHeight = bundle.getFloat(KEY_MATCH_VIEW_HEIGHT);
+	        prevMatchViewWidth = bundle.getFloat(KEY_MATCH_VIEW_WIDTH);
+	        prevViewHeight = bundle.getInt(KEY_VIEW_HEIGHT);
+	        prevViewWidth = bundle.getInt(KEY_VIEW_WIDTH);
+	        super.onRestoreInstanceState(bundle.getParcelable(KEY_INSTANCE_STATE));
 	        return;
       	}
 
@@ -232,7 +265,7 @@ public class TouchImageView extends ImageView {
      */
     public void setMaxZoom(float max) {
         maxScale = max;
-        superMaxScale = SUPER_MAX_MULTIPLIER * maxScale;
+        upperBounceBackScale = maxScaleBounceBackMultiplier * maxScale;
     }
     
     /**
@@ -268,7 +301,7 @@ public class TouchImageView extends ImageView {
      */
     public void setMinZoom(float min) {
     	minScale = min;
-    	superMinScale = SUPER_MIN_MULTIPLIER * minScale;
+    	lowerBounceBackScale = minScaleBounceBackMultiplier * minScale;
     }
     
     /**
@@ -297,9 +330,9 @@ public class TouchImageView extends ImageView {
      * is out of bounds.
      */
     private void fixTrans() {
-        matrix.getValues(m);
-        float transX = m[Matrix.MTRANS_X];
-        float transY = m[Matrix.MTRANS_Y];
+        matrix.getValues(matrixValues);
+        float transX = matrixValues[Matrix.MTRANS_X];
+        float transY = matrixValues[Matrix.MTRANS_Y];
         
         float fixTransX = getFixTrans(transX, viewWidth, getImageWidth());
         float fixTransY = getFixTrans(transY, viewHeight, getImageHeight());
@@ -318,15 +351,15 @@ public class TouchImageView extends ImageView {
      */
     private void fixScaleTrans() {
     	fixTrans();
-    	matrix.getValues(m);
+    	matrix.getValues(matrixValues);
     	if (getImageWidth() < viewWidth) {
-    		m[Matrix.MTRANS_X] = (viewWidth - getImageWidth()) / 2;
+    		matrixValues[Matrix.MTRANS_X] = (viewWidth - getImageWidth()) / 2;
     	}
     	
     	if (getImageHeight() < viewHeight) {
-    		m[Matrix.MTRANS_Y] = (viewHeight - getImageHeight()) / 2;
+    		matrixValues[Matrix.MTRANS_Y] = (viewHeight - getImageHeight()) / 2;
     	}
-    	matrix.setValues(m);
+    	matrix.setValues(matrixValues);
     }
 
     private float getFixTrans(float trans, float viewSize, float contentSize) {
@@ -432,19 +465,19 @@ public class TouchImageView extends ImageView {
         	setImageCalledRecenterImage = false;
         	
         } else {
-        	prevMatrix.getValues(m);
+        	prevMatrix.getValues(matrixValues);
         	
         	//
         	// Rescale Matrix after rotation
         	//
-        	m[Matrix.MSCALE_X] = matchViewWidth / drawableWidth * normalizedScale;
-        	m[Matrix.MSCALE_Y] = matchViewHeight / drawableHeight * normalizedScale;
+        	matrixValues[Matrix.MSCALE_X] = matchViewWidth / drawableWidth * normalizedScale;
+        	matrixValues[Matrix.MSCALE_Y] = matchViewHeight / drawableHeight * normalizedScale;
         	
         	//
         	// TransX and TransY from previous matrix
         	//
-            float transX = m[Matrix.MTRANS_X];
-            float transY = m[Matrix.MTRANS_Y];
+            float transX = matrixValues[Matrix.MTRANS_X];
+            float transY = matrixValues[Matrix.MTRANS_Y];
             
             //
             // Width
@@ -463,7 +496,7 @@ public class TouchImageView extends ImageView {
             //
             // Set the matrix to the adjusted scale and translate values.
             //
-            matrix.setValues(m);
+            matrix.setValues(matrixValues);
         }
         setImageMatrix(matrix);
     }
@@ -515,13 +548,13 @@ public class TouchImageView extends ImageView {
         	//
         	// The width/height of image is less than the view's width/height. Center it.
         	//
-        	m[axis] = (viewSize - (drawableSize * m[Matrix.MSCALE_X])) * 0.5f;
+        	matrixValues[axis] = (viewSize - (drawableSize * matrixValues[Matrix.MSCALE_X])) * 0.5f;
         	
         } else if (trans > 0) {
         	//
         	// The image is larger than the view, but was not before rotation. Center it.
         	//
-        	m[axis] = -((imageSize - viewSize) * 0.5f);
+        	matrixValues[axis] = -((imageSize - viewSize) * 0.5f);
         	
         } else {
         	//
@@ -530,7 +563,7 @@ public class TouchImageView extends ImageView {
         	// to calculate the trans in the new view width/height.
         	//
         	float percentage = (Math.abs(trans) + (0.5f * prevViewSize)) / prevImageSize;
-        	m[axis] = -((percentage * imageSize) - (viewSize * 0.5f));
+        	matrixValues[axis] = -((percentage * imageSize) - (viewSize * 0.5f));
         }
     }
     
@@ -685,8 +718,8 @@ public class TouchImageView extends ImageView {
     	
     	float lowerScale, upperScale;
     	if (stretchImageToSuper) {
-    		lowerScale = superMinScale;
-    		upperScale = superMaxScale;
+    		lowerScale = lowerBounceBackScale;
+    		upperScale = upperBounceBackScale;
     		
     	} else {
     		lowerScale = minScale;
@@ -810,11 +843,11 @@ public class TouchImageView extends ImageView {
      * @return Coordinates of the point touched, in the coordinate system of the original drawable.
      */
     private PointF transformCoordTouchToBitmap(float x, float y, boolean clipToBitmap) {
-         matrix.getValues(m);
+         matrix.getValues(matrixValues);
          float origW = getDrawable().getIntrinsicWidth();
          float origH = getDrawable().getIntrinsicHeight();
-         float transX = m[Matrix.MTRANS_X];
-         float transY = m[Matrix.MTRANS_Y];
+         float transX = matrixValues[Matrix.MTRANS_X];
+         float transY = matrixValues[Matrix.MTRANS_Y];
          float finalX = ((x - transX) * origW) / getImageWidth();
          float finalY = ((y - transY) * origH) / getImageHeight();
          
@@ -834,13 +867,13 @@ public class TouchImageView extends ImageView {
      * @return Coordinates of the point in the view's coordinate system.
      */
     private PointF transformCoordBitmapToTouch(float bx, float by) {
-        matrix.getValues(m);        
+        matrix.getValues(matrixValues);
         float origW = getDrawable().getIntrinsicWidth();
         float origH = getDrawable().getIntrinsicHeight();
         float px = bx / origW;
         float py = by / origH;
-        float finalX = m[Matrix.MTRANS_X] + getImageWidth() * px;
-        float finalY = m[Matrix.MTRANS_Y] + getImageHeight() * py;
+        float finalX = matrixValues[Matrix.MTRANS_X] + getImageWidth() * px;
+        float finalY = matrixValues[Matrix.MTRANS_Y] + getImageHeight() * py;
         return new PointF(finalX , finalY);
     }
     
@@ -859,10 +892,10 @@ public class TouchImageView extends ImageView {
     	Fling(int velocityX, int velocityY) {
     		setState(FLING);
     		scroller = new Scroller(context);
-    		matrix.getValues(m);
+    		matrix.getValues(matrixValues);
     		
-    		int startX = (int) m[Matrix.MTRANS_X];
-    		int startY = (int) m[Matrix.MTRANS_Y];
+    		int startX = (int) matrixValues[Matrix.MTRANS_X];
+    		int startY = (int) matrixValues[Matrix.MTRANS_Y];
     		int minX, maxX, minY, maxY;
     		
     		if (getImageWidth() > viewWidth) {
@@ -927,7 +960,24 @@ public class TouchImageView extends ImageView {
     }
     
     private void printMatrixInfo() {
-    	matrix.getValues(m);
-    	Log.d(DEBUG, "Scale: " + m[Matrix.MSCALE_X] + " TransX: " + m[Matrix.MTRANS_X] + " TransY: " + m[Matrix.MTRANS_Y]);
+    	matrix.getValues(matrixValues);
+    	Log.d(LOGTAG, "Scale: " + matrixValues[Matrix.MSCALE_X] + " TransX: " + matrixValues[Matrix.MTRANS_X] + " TransY: " + matrixValues[Matrix.MTRANS_Y]);
     }
+
+    // default minimum scale is 1
+    private static final float DEFAULT_MIN_SCALE = 1.0f;
+    // default maximum scale is 3
+    private static final float DEFAULT_MAX_SCALE = 3.0f;
+
+    // default minimum BounceBackScaleMultiplier
+    private static final float DEFAULT_MINIMUM_BOUNCEBACK_MULTIPLIER = .85f;
+    private static final float DEFAULT_MAXIMUM_BOUNCEBACK_MULTIPLIER = 1.15f;
+
+    public static final String KEY_INSTANCE_STATE = "TouchImageView_instanceState";
+    public static final String KEY_NORMALIZED_SCALE = "TouchImageView_normalizedScale";
+    public static final String KEY_MATCH_VIEW_HEIGHT = "TouchImageView_matchViewHeight";
+    public static final String KEY_MATCH_VIEW_WIDTH = "TouchImageView_matchViewWidth";
+    public static final String KEY_VIEW_WIDTH = "TouchImageView_viewWidth";
+    public static final String KEY_VIEW_HEIGHT = "TouchImageView_viewHeight";
+    public static final String KEY_MATRIX_VALUES = "TouchImageView_matrix";
 }

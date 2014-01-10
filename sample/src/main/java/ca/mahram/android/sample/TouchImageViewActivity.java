@@ -1,7 +1,9 @@
-package com.example.touch;
+package ca.mahram.android.sample;
 
 import android.app.Activity;
 import android.os.Bundle;
+
+import ca.mahram.android.TouchImageView;
 
 
 public class TouchImageViewActivity extends Activity {
