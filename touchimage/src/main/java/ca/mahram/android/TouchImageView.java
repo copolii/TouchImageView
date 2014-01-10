@@ -41,6 +41,35 @@ import static ca.mahram.android.TouchImageView.State.FLING;
 import static ca.mahram.android.TouchImageView.State.NONE;
 import static ca.mahram.android.TouchImageView.State.ZOOM;
 
+/**
+ <p>
+ TouchImageView extends <a href="http://developer.android.com/reference/android/widget/ImageView.html" >ImageView</a> to
+ include pinch zooming, panning, fling and double tap zoom.
+ </p>
+ <p>
+ The following properties can be set within the XML declaration to control the behaviour of ToughImageView:<br/>
+ <b>minScale</b> Minimum scale that the image can be down-sized to. This is a float.<br/>
+ <b>maxScale</b> Maximum scale that the image can be down-sized to. This is a float.<br/>
+ <b>minScaleBounceBackMultiplier</b> Multiplied by the minimum scale, this number determines how much smaller than the
+ minimum scale the picture has to be pinched before it bounces back to the minimum. This is a float.<br/>
+ <b>maxScaleBounceBackMultiplier</b> Multiplied by the maximum scale, this number determines how much larger than the
+ maximum scale the picture has to be zoomed before it bounces back to the maximum. This is a float.<br/>
+ <b>allowScale</b> set to <i>true</i> to enable pinch zoom and <i>false</i> to disable. This setting also affects the
+ double tap behaviour.<br/>
+ <b>flingBehaviour</b> determines how the image view reacts to fling events. This is an enum:
+ <ul>
+ <li><i>scroll</i> means that the image will pan in the direction of the fling (if zoomed in)</li>
+ <li><i>listener</i> allows the user to specify a @{link FlingListener} to be informed of fling events. Panning is still
+ handled, but as a drag event (no inertia).</li>
+ <li><i>disable</i> ignores all fling events. Panning is handled as a drag event (no inertia).</li>
+ </ul>
+ <b>allowDrag</b> set to <i>true</i> to enable panning while zoomed and <i>false</i> to disable panning.<br/>
+ <b>allowDoubleTap</b> if set to <i>true</i> double tap toggles the zoom state. If set to <i>false</i> double tap events
+ are ignored.<br/>
+ <b>maintainZoom</b> if set to <i>true</i> the newly loaded image will retain the zoom state of the previous image (if
+ any). Setting this to <i>false</i> will reset the zoom state when a new image is loaded.<br/>
+ </p>
+ */
 public class TouchImageView
   extends ImageView {
 
@@ -804,7 +833,7 @@ public class TouchImageView
                matrixValues[Matrix.MTRANS_Y]);
     }
 
-    public static enum State {
+    private static enum State {
         NONE,
         DRAG,
         ZOOM,
@@ -813,8 +842,17 @@ public class TouchImageView
     }
 
     public enum FlingBehaviour {
+        /**
+         Scroll (with inertia) on fling
+         */
         SCROLL,
+        /**
+         Inform a @{link FlingListener} of fling events (if one is registered)
+         */
         LISTENER,
+        /**
+         Ignore fling events
+         */
         DISABLE
     }
 
