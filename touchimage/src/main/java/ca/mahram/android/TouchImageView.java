@@ -710,7 +710,7 @@ public class TouchImageView extends ImageView {
 
     public static enum State {NONE, DRAG, ZOOM, FLING, ANIMATE_ZOOM}
 
-    public enum FlingBehaviour {SCROLL, LISTENER}
+    public enum FlingBehaviour {SCROLL, LISTENER, DISABLE}
 
     /**
      * Set the Fling Behaviour to 'listener' and override an instance of FlingListener to override
@@ -780,9 +780,14 @@ public class TouchImageView extends ImageView {
 
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-            return flingBehaviour == FlingBehaviour.SCROLL
-                    ? onScrollFling(e1, e2, velocityX, velocityY)
-                    : notifyFling(e1, e2, velocityX, velocityY);
+            switch (flingBehaviour) {
+                case SCROLL:
+                    return onScrollFling(e1, e2, velocityX, velocityY);
+                case LISTENER:
+                    return notifyFling(e1, e2, velocityX, velocityY);
+                default:
+                    return false;
+            }
         }
 
         private boolean notifyFling (final MotionEvent e1, final MotionEvent e2, final float velocityX, final float velocityY) {
