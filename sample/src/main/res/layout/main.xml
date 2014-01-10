@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:orientation="vertical"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent" >
-    
-	<ca.mahram.android.TouchImageView
-	    android:id="@+id/img"
-	    android:src="@drawable/grand_canyon"
+              xmlns:app="http://schemas.android.com/apk/res-auto"
+              android:orientation="vertical"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent">
+
+    <ca.mahram.android.TouchImageView
+        android:id="@+id/img"
+        android:src="@drawable/grand_canyon"
         app:minScale="1.0"
         app:maxScale="4.0"
         app:minScaleBounceBackMultiplier="0.5"
@@ -16,7 +16,7 @@
         app:flingBehaviour="scroll"
         app:allowDrag="true"
         app:allowDoubleTap="true"
-	    android:layout_width="match_parent"
-	    android:layout_height="match_parent" />
-    
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
 </LinearLayout>

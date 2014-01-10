@@ -2,23 +2,18 @@
 <resources>
 
     <declare-styleable name="TouchImageView">
-        <attr name="minScale" format="float" />
-        <attr name="maxScale" format="float" />
-        <attr name="minScaleBounceBackMultiplier" format="float" />
-        <attr name="maxScaleBounceBackMultiplier" format="float" />
-        <attr name="allowScale" format="boolean" />
-        <attr name="flingBehaviour" >
-            <enum name="scroll" value="0" />
-            <enum name="listener" value="1" />
-            <enum name="disable" value="2" />
+        <attr name="minScale" format="float"/>
+        <attr name="maxScale" format="float"/>
+        <attr name="minScaleBounceBackMultiplier" format="float"/>
+        <attr name="maxScaleBounceBackMultiplier" format="float"/>
+        <attr name="allowScale" format="boolean"/>
+        <attr name="flingBehaviour">
+            <enum name="scroll" value="0"/>
+            <enum name="listener" value="1"/>
+            <enum name="disable" value="2"/>
         </attr>
-        <attr name="allowDrag" format="boolean" />
-        <attr name="allowDoubleTap" format="boolean" />
-
-        <!--attr name="allowRotate" format="boolean" /-->
-
-
-
-
+        <attr name="allowDrag" format="boolean"/>
+        <attr name="allowDoubleTap" format="boolean"/>
+        <attr name="maintainZoom" format="boolean"/>
     </declare-styleable>
 </resources>
