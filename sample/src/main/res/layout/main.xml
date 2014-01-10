@@ -14,6 +14,7 @@
         app:maxScaleBounceBackMultiplier="1.5"
         app:allowScale="true"
         app:flingBehaviour="listener"
+        app:allowDrag="true"
 	    android:layout_width="match_parent"
 	    android:layout_height="match_parent" />
     

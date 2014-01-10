@@ -110,6 +110,8 @@ public class TouchImageView extends ImageView {
     private Fling fling;
     private FlingListener flingListener;
 
+    private final boolean allowDrag;
+
     public TouchImageView(final Context context) {
         super(context);
         minScaleBounceBackMultiplier = DEFAULT_MINIMUM_BOUNCEBACK_MULTIPLIER;
@@ -118,6 +120,7 @@ public class TouchImageView extends ImageView {
         maxScale = DEFAULT_MAX_SCALE;
         flingBehaviour = FlingBehaviour.SCROLL;
         mScaleDetector = new ScaleGestureDetector(context, new ScaleListener());
+        allowDrag = true;
         sharedConstructing(context);
     }
 
@@ -140,6 +143,8 @@ public class TouchImageView extends ImageView {
 
             minScaleBounceBackMultiplier = ta.getFloat(R.styleable.TouchImageView_minScaleBounceBackMultiplier, DEFAULT_MINIMUM_BOUNCEBACK_MULTIPLIER);
             maxScaleBounceBackMultiplier = ta.getFloat(R.styleable.TouchImageView_maxScaleBounceBackMultiplier, DEFAULT_MAXIMUM_BOUNCEBACK_MULTIPLIER);
+
+            allowDrag = ta.getBoolean (R.styleable.TouchImageView_allowDrag, true);
 
             fling = ta.getInt(R.styleable.TouchImageView_flingBehaviour, FlingBehaviour.SCROLL.ordinal());
 
@@ -770,8 +775,8 @@ public class TouchImageView extends ImageView {
                 return false;
 
             final float diffX = zeroIfTouchSlop (e2.getX () - e1.getX ());
-            final float absDiffX = Math.abs (diffX);
-            final float diffY = zeroIfTouchSlop (e2.getY () - e1.getY ());
+            final float absDiffX = Math.abs(diffX);
+            final float diffY = zeroIfTouchSlop(e2.getY() - e1.getY());
             final float absDiffY = Math.abs (diffY);
             final float xSpeed = zeroIfNotFlingSpeed (Math.abs (velocityX));
             final float ySpeed = zeroIfNotFlingSpeed (Math.abs (velocityY));
@@ -861,7 +866,7 @@ public class TouchImageView extends ImageView {
                         break;
 
                     case MotionEvent.ACTION_MOVE:
-                        if (state == DRAG) {
+                        if (state == DRAG && allowDrag) {
                             float deltaX = curr.x - last.x;
                             float deltaY = curr.y - last.y;
                             float fixTransX = getFixDragTrans(deltaX, viewWidth, getImageWidth());

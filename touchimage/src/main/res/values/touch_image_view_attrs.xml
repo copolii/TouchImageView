@@ -11,8 +11,9 @@
             <enum name="scroll" value="0" />
             <enum name="listener" value="1" />
         </attr>
+        <attr name="allowDrag" format="boolean" />
         <!--attr name="allowRotate" format="boolean" /-->
-        <!--attr name="allowDrag" format="boolean" /-->
+
         <!--attr name="allowDoubleTap" format="boolean" /-->
         <!--attr name="allowFling" format="boolean" /-->
 
